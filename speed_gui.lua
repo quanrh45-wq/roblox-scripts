@@ -3,12 +3,47 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+-- Xóa GUI cũ nếu lỡ chạy đè nhiều lần
+if playerGui:FindFirstChild("SpeedScriptGUI") then
+	playerGui.SpeedScriptGUI:Destroy()
+end
+
 -- Thay dãy số này bằng Asset ID ảnh của bạn trên Roblox (ví dụ: "rbxassetid://1234567890")
 local BACKGROUND_IMAGE_ID = "rbxassetid://0"
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "SpeedScriptGUI"
 screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = playerGui
+
+-- 1. KHUNG CHÍNH (FRAME)
+local mainFrame = Instance.new("FrameBắt được bệnh ngay rồi! Nhìn ảnh chụp thì khung chính và nút **X** đỏ vẫn lên bình thường, chỉ bị đen xì toàn bộ ruột bên trong[cite: 8] — đây là lỗi đè lớp hiển thị (`ZIndex`) trong Roblox UI.
+
+Cụ thể là cái lớp phủ tối `darkOverlay` của tao đang để `ZIndex = 2` (hoặc trên một số máy/executor, `ZIndexBehavior` mặc định khiến `darkOverlay` đè lên trên cả ô nhập số, nút `START`, nút `STOP` và tô đen đặc toàn bộ khung).
+
+### Bản code đã fix lỗi đen xì
+Tao đã gỡ hẳn lớp `darkOverlay` gây che nút và nâng `ZIndex = 10` cho toàn bộ ô nhập số, nút `START`, `STOP`, `X` để luôn nổi lên trên cùng. Mày copy đè toàn bộ đoạn dưới đây vào file `speed_gui.lua` trên GitHub:
+
+```lua
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Thay dãy số này bằng Asset ID ảnh của bạn trên Roblox (ví dụ: "rbxassetid://1234567890")
+local BACKGROUND_IMAGE_ID = "rbxassetid://0"
+
+-- Xóa bản GUI cũ nếu chạy lại script để tránh chồng đè
+local oldGui = playerGui:FindFirstChild("SpeedScriptGUI")
+if oldGui then
+	oldGui:Destroy()
+end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SpeedScriptGUI"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = playerGui
 
 -- 1. KHUNG CHÍNH (FRAME)
@@ -16,10 +51,11 @@ local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
 mainFrame.Size = UDim2.new(0, 240, 0, 180)
 mainFrame.Position = UDim2.new(0.5, -120, 0.4, -90)
-mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+mainFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
 mainFrame.Draggable = true
+mainFrame.ZIndex = 1
 mainFrame.Parent = screenGui
 
 local mainCorner = Instance.new("UICorner")
@@ -31,7 +67,7 @@ mainStroke.Thickness = 3
 mainStroke.Color = Color3.fromRGB(0, 0, 0)
 mainStroke.Parent = mainFrame
 
--- Ảnh nền khung chính
+-- Ảnh nền khung chính (chỉ hiện khi có Asset ID khác 0)
 local bgImage = Instance.new("ImageLabel")
 bgImage.Name = "BackgroundImage"
 bgImage.Size = UDim2.new(1, 0, 1, 0)
@@ -39,39 +75,26 @@ bgImage.Position = UDim2.new(0, 0, 0, 0)
 bgImage.BackgroundTransparency = 1
 bgImage.Image = BACKGROUND_IMAGE_ID
 bgImage.ScaleType = Enum.ScaleType.Crop
-bgImage.ZIndex = 1
+bgImage.ZIndex = 2
 bgImage.Parent = mainFrame
 
 local bgCorner = Instance.new("UICorner")
 bgCorner.CornerRadius = UDim.new(0, 12)
 bgCorner.Parent = bgImage
 
--- Lớp phủ tối nhẹ để chữ và nút rõ hơn
-local darkOverlay = Instance.new("Frame")
-darkOverlay.Name = "DarkOverlay"
-darkOverlay.Size = UDim2.new(1, 0, 1, 0)
-darkOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-darkOverlay.BackgroundTransparency = 0.35
-darkOverlay.BorderSizePixel = 0
-darkOverlay.ZIndex = 2
-darkOverlay.Parent = mainFrame
-
-local overlayCorner = Instance.new("UICorner")
-overlayCorner.CornerRadius = UDim.new(0, 12)
-overlayCorner.Parent = darkOverlay
-
 -- 2. NÚT HÌNH TRÒN THU NHỎ (HIỆN KHI BẤM DẤU X)
 local miniCircleButton = Instance.new("ImageButton")
 miniCircleButton.Name = "MiniCircleButton"
 miniCircleButton.Size = UDim2.new(0, 56, 0, 56)
 miniCircleButton.Position = UDim2.new(0.5, -28, 0.4, -28)
-miniCircleButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+miniCircleButton.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
 miniCircleButton.Image = BACKGROUND_IMAGE_ID
 miniCircleButton.ScaleType = Enum.ScaleType.Crop
 miniCircleButton.BorderSizePixel = 0
 miniCircleButton.Active = true
 miniCircleButton.Draggable = true
 miniCircleButton.Visible = false
+miniCircleButton.ZIndex = 10
 miniCircleButton.Parent = screenGui
 
 local miniCorner = Instance.new("UICorner")
@@ -86,15 +109,15 @@ miniStroke.Parent = miniCircleButton
 -- 3. NÚT ĐÓNG / THU NHỎ ("X")
 local closeButton = Instance.new("TextButton")
 closeButton.Name = "CloseButton"
-closeButton.Size = UDim2.new(0, 26, 0, 26)
-closeButton.Position = UDim2.new(1, -13, 0, -13)
-closeButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+closeButton.Size = UDim2.new(0, 28, 0, 28)
+closeButton.Position = UDim2.new(1, -14, 0, -14)
+closeButton.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 closeButton.Text = "X"
 closeButton.TextColor3 = Color3.fromRGB(255, 70, 70)
 closeButton.Font = Enum.Font.SourceSansBold
-closeButton.TextSize = 16
+closeButton.TextSize = 18
 closeButton.BorderSizePixel = 0
-closeButton.ZIndex = 5
+closeButton.ZIndex = 15
 closeButton.Parent = mainFrame
 
 local closeCorner = Instance.new("UICorner")
@@ -110,15 +133,16 @@ closeStroke.Parent = closeButton
 local textBox = Instance.new("TextBox")
 textBox.Name = "SpeedInput"
 textBox.Size = UDim2.new(0, 200, 0, 45)
-textBox.Position = UDim2.new(0.5, -100, 0, 20)
-textBox.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+textBox.Position = UDim2.new(0.5, -100, 0, 22)
+textBox.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
 textBox.BorderSizePixel = 0
 textBox.PlaceholderText = "Nhập speed (16-1000)"
+textBox.PlaceholderColor3 = Color3.fromRGB(110, 110, 110)
 textBox.Text = ""
 textBox.TextColor3 = Color3.fromRGB(0, 0, 0)
-textBox.Font = Enum.Font.ComicSans
+textBox.Font = Enum.Font.SourceSansBold
 textBox.TextSize = 18
-textBox.ZIndex = 4
+textBox.ZIndex = 10
 textBox.Parent = mainFrame
 
 local textCorner = Instance.new("UICorner")
@@ -133,15 +157,15 @@ textStroke.Parent = textBox
 -- 5. NÚT START
 local startButton = Instance.new("TextButton")
 startButton.Name = "StartButton"
-startButton.Size = UDim2.new(0, 95, 0, 40)
-startButton.Position = UDim2.new(0, 20, 0, 115)
-startButton.BackgroundColor3 = Color3.fromRGB(20, 150, 60)
+startButton.Size = UDim2.new(0, 95, 0, 42)
+startButton.Position = UDim2.new(0, 20, 0, 112)
+startButton.BackgroundColor3 = Color3.fromRGB(20, 165, 65)
 startButton.Text = "START"
 startButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 startButton.Font = Enum.Font.SourceSansBold
 startButton.TextSize = 18
 startButton.BorderSizePixel = 0
-startButton.ZIndex = 4
+startButton.ZIndex = 10
 startButton.Parent = mainFrame
 
 local startCorner = Instance.new("UICorner")
@@ -156,15 +180,15 @@ startStroke.Parent = startButton
 -- 6. NÚT STOP
 local stopButton = Instance.new("TextButton")
 stopButton.Name = "StopButton"
-stopButton.Size = UDim2.new(0, 95, 0, 40)
-stopButton.Position = UDim2.new(1, -115, 0, 115)
-stopButton.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
+stopButton.Size = UDim2.new(0, 95, 0, 42)
+stopButton.Position = UDim2.new(1, -115, 0, 112)
+stopButton.BackgroundColor3 = Color3.fromRGB(210, 35, 35)
 stopButton.Text = "STOP"
 stopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 stopButton.Font = Enum.Font.SourceSansBold
 stopButton.TextSize = 18
 stopButton.BorderSizePixel = 0
-stopButton.ZIndex = 4
+stopButton.ZIndex = 10
 stopButton.Parent = mainFrame
 
 local stopCorner = Instance.new("UICorner")
@@ -198,7 +222,7 @@ startButton.MouseButton1Click:Connect(function()
 	else
 		textBox.BackgroundColor3 = Color3.fromRGB(255, 200, 200)
 		task.wait(0.2)
-		textBox.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+		textBox.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
 	end
 end)
 
